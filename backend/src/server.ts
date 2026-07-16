@@ -1,8 +1,15 @@
 import { app } from '@/app.js';
-import { env } from '@/config/env.config.js';
+import { config } from '@/config/index.js';
+import { connectDB } from '@/config/database.js';
 
-const server = app.listen(env.PORT, () => {
-  console.log(`Server running in ${env.NODE_ENV} mode on port ${env.PORT}`);
+try {
+  await connectDB();
+} catch (error) {
+  process.exit(1);
+}
+
+const server = app.listen(config.port, () => {
+  console.log(`Server running on port ${config.port}`);
 });
 
 export { server };
