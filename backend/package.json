@@ -20,12 +20,15 @@
   },
   "type": "module",
   "dependencies": {
+    "@better-auth/mongo-adapter": "^1.6.23",
+    "better-auth": "^1.6.23",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "mongodb": "~7.2.0",
     "mongoose": "^9.7.4",
     "zod": "^4.4.3"
   },
