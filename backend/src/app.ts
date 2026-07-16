@@ -3,20 +3,22 @@ import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import { toNodeHandler } from 'better-auth/node';
 
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { ApiResponse } from './utils/ApiResponse.js';
+import { auth, requireAuth } from './modules/auth/index.js';
 
 const app = express();
 
-//Security & request optimization middlewares
 app.use(helmet());
 app.use(cors());
 app.use(compression());
-
-//Parsers
 app.use(cookieParser());
+
+app.all('/api/auth/*splat', toNodeHandler(auth));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -31,6 +33,19 @@ app.get('/health', (req, res) => {
   );
 });
 
+// Protected route returning the currently authenticated host
+app.get('/api/v1/me', requireAuth, (req, res) => {
+  res.status(200).json(
+    new ApiResponse({
+      statusCode: 200,
+      message: 'Authenticated host retrieved successfully',
+      data: {
+        host: req.user,
+        session: req.session,
+      },
+    })
+  );
+});
 
 app.use(notFoundHandler);
 app.use(errorHandler);
