@@ -1,15 +1,14 @@
-import { app } from '@/app.js';
-import { config } from '@/config/index.js';
-import { connectDB } from '@/config/database.js';
+import { app } from "@/app.js";
+import { config } from "@/config/index.js";
+import { connectDB } from "@/config/database.js";
 
-try {
-  await connectDB();
-} catch (error) {
-  process.exit(1);
-}
-
-const server = app.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
-});
-
-export { server };
+connectDB()
+  .then(() => {
+    app.listen(config.port, () => {
+      console.log(`Server running on port ${config.port}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  });
