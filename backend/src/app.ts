@@ -10,6 +10,7 @@ import { errorHandler } from './middlewares/errorHandler.js';
 import { ApiResponse } from './utils/ApiResponse.js';
 import { auth, requireAuth } from './modules/auth/index.js';
 import { gameRouter } from './modules/games/index.js';
+import { sessionRouter } from './modules/sessions/index.js';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/v1/games', gameRouter);
+app.use('/api/v1', sessionRouter);
 
 //Routes
 app.get('/health', (req, res) => {
