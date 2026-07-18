@@ -9,6 +9,7 @@ import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { ApiResponse } from './utils/ApiResponse.js';
 import { auth, requireAuth } from './modules/auth/index.js';
+import { gameRouter } from './modules/games/index.js';
 
 const app = express();
 
@@ -21,6 +22,8 @@ app.all('/api/auth/*splat', toNodeHandler(auth));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/api/v1/games', gameRouter);
 
 //Routes
 app.get('/health', (req, res) => {
