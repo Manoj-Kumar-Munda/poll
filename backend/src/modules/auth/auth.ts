@@ -10,6 +10,7 @@ export const auth = betterAuth({
   database: mongodbAdapter(db, {
     // client, // Commented out to disable transactions on standalone MongoDB (useful for local development)
   }),
+  trustedOrigins: [config.clientUrl],
   emailAndPassword: {
     enabled: true,
     autoSignIn: false,
