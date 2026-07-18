@@ -9,6 +9,10 @@ export const gameRepository = {
     return Game.find(filter).sort(sort);
   },
 
+  findById(id: string) {
+    return Game.findById(id);
+  },
+
   findOne(filter: Record<string, unknown>) {
     return Game.findOne(filter);
   },
