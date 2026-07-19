@@ -1,7 +1,6 @@
 import { Schema, model, type InferSchemaType } from 'mongoose';
 
-export const GAME_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const;
-export const QUESTION_TYPES = ['MCQ', 'YES_NO', 'OPEN_TEXT'] as const;
+import { GAME_STATUSES, QUESTION_TYPES } from '@/constants/index.js';
 
 const questionSchema = new Schema(
   {

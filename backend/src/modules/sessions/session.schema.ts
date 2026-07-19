@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { SESSION_STATUSES } from './session.model.js';
+import { SESSION_STATUSES } from '@/constants/index.js';
 import { objectIdRegex } from '@/utils/helpers.js';
 
 export const createSessionParamsSchema = z.object({

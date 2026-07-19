@@ -1,6 +1,6 @@
 import { Schema, model, type InferSchemaType } from 'mongoose';
 
-export const SESSION_STATUSES = ['WAITING', 'LIVE', 'FINISHED'] as const;
+import { SESSION_STATUSES } from '@/constants/index.js';
 
 const sessionSchema = new Schema(
   {

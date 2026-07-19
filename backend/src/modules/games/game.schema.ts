@@ -1,6 +1,7 @@
+import mongoose from "mongoose";
 import { z } from "zod";
 
-import { GAME_STATUSES, QUESTION_TYPES } from "./game.model.js";
+import { GAME_STATUSES, QUESTION_TYPES } from "@/constants/index.js";
 
 export const questionSchema = z
   .object({
@@ -54,7 +55,7 @@ export const updateGameSchema = createGameSchema
   );
 
 export const gameIdParamsSchema = z.object({
-  gameId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid game ID"),
+  gameId: z.string().refine(mongoose.isValidObjectId, "Invalid game ID"),
 });
 
 export const listGamesQuerySchema = z.object({
