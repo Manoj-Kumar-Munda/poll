@@ -1,6 +1,6 @@
 import { Schema, model, type InferSchemaType } from 'mongoose';
 
-const participantSchema = new Schema(
+const sessionParticipantSchema = new Schema(
   {
     sessionId: {
       type: Schema.Types.ObjectId,
@@ -19,7 +19,7 @@ const participantSchema = new Schema(
   { timestamps: true },
 );
 
-participantSchema.index(
+sessionParticipantSchema.index(
   { sessionId: 1, email: 1 },
   {
     unique: true,
@@ -27,5 +27,5 @@ participantSchema.index(
   },
 );
 
-export type ParticipantDocument = InferSchemaType<typeof participantSchema>;
-export const Participant = model('Participant', participantSchema);
+export type SessionParticipantDocument = InferSchemaType<typeof sessionParticipantSchema>;
+export const SessionParticipant = model('SessionParticipant', sessionParticipantSchema);
