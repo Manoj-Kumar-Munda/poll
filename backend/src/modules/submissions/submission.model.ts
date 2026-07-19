@@ -1,26 +1,26 @@
-import { Schema, model, type InferSchemaType } from 'mongoose';
+import { Schema, model, type InferSchemaType } from "mongoose";
 
-import { QUESTION_TYPES } from '@/constants/index.js';
+import { QUESTION_TYPES } from "@/constants/index.js";
 
 const submissionSchema = new Schema(
   {
     sessionId: {
       type: Schema.Types.ObjectId,
-      ref: 'Session',
+      ref: "Session",
       required: true,
       index: true,
     },
     participantId: {
       type: Schema.Types.ObjectId,
-      ref: 'SessionParticipant',
+      ref: "SessionParticipant",
       required: true,
       index: true,
     },
-    questionId: { type: Schema.Types.ObjectId, ref: 'Question', required: true, index: true },
-    questionType: {
-      type: String,
-      enum: QUESTION_TYPES,
+    questionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Question",
       required: true,
+      index: true,
     },
     answer: { type: String, required: true },
     isCorrect: { type: Boolean },
@@ -31,7 +31,10 @@ const submissionSchema = new Schema(
   { timestamps: true },
 );
 
-submissionSchema.index({ sessionId: 1, participantId: 1, questionId: 1 }, { unique: true });
+submissionSchema.index(
+  { sessionId: 1, participantId: 1, questionId: 1 },
+  { unique: true },
+);
 
 export type SubmissionDocument = InferSchemaType<typeof submissionSchema>;
-export const Submission = model('Submission', submissionSchema);
+export const Submission = model("Submission", submissionSchema);
