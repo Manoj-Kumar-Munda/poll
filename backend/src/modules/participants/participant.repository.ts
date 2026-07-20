@@ -8,4 +8,8 @@ export const participantRepository = {
   findById(id: string) {
     return SessionParticipant.findById(id);
   },
+
+  findBySessionId(sessionId: string) {
+    return SessionParticipant.find({ sessionId });
+  },
 };

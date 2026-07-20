@@ -14,11 +14,20 @@ vi.mock("../../../modules/games/game.repository.js", () => ({
   },
 }));
 
+vi.mock("../../../modules/participants/participant.repository.js", () => ({
+  participantRepository: {
+    findBySessionId: vi.fn(),
+  },
+}));
+
 const { sessionRepository } = await import(
   "../../../modules/sessions/session.repository.js"
 );
 const { gameRepository } = await import(
   "../../../modules/games/game.repository.js"
+);
+const { participantRepository } = await import(
+  "../../../modules/participants/participant.repository.js"
 );
 const { gameFlowService } = await import(
   "../../../modules/game-flow/game-flow.service.js"
@@ -54,6 +63,7 @@ const makeGame = (overrides = {}) => ({
 describe("GameFlowService (Session Lifecycle)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(participantRepository.findBySessionId).mockResolvedValue([]);
     // Clean up runtimes
     for (const runtime of gameRuntimeManager.getAll()) {
       gameRuntimeManager.remove(runtime.sessionId);
@@ -77,10 +87,48 @@ describe("GameFlowService (Session Lifecycle)", () => {
 
       expect(sessionRepository.findById).toHaveBeenCalledWith(SESSION_ID);
       expect(gameRepository.findById).toHaveBeenCalledWith(GAME_ID);
+      expect(participantRepository.findBySessionId).toHaveBeenCalledWith(SESSION_ID);
       expect(sessionRepository.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: session._id },
         expect.objectContaining({ status: "LIVE" })
       );
+    });
+
+    it("should start a session and initialize game runtime with participants", async () => {
+      const session = makeSession();
+      const updatedSession = makeSession({ status: "LIVE", startedAt: new Date() });
+      const mockParticipants = [
+        { _id: "part-1", name: "Alice", email: "alice@test.com", joinedAt: new Date() },
+        { _id: "part-2", name: "Bob", email: undefined, joinedAt: new Date() },
+      ];
+
+      vi.mocked(sessionRepository.findById).mockResolvedValue(session as any);
+      vi.mocked(gameRepository.findById).mockResolvedValue(makeGame() as any);
+      vi.mocked(participantRepository.findBySessionId).mockResolvedValue(mockParticipants as any);
+      vi.mocked(sessionRepository.findOneAndUpdate).mockResolvedValue(updatedSession as any);
+
+      const result = await gameFlowService.startSession(SESSION_ID);
+
+      expect(result.status).toBe("LIVE");
+      expect(gameRuntimeManager.has(SESSION_ID)).toBe(true);
+
+      const runtime = gameRuntimeManager.get(SESSION_ID);
+      expect(runtime).toBeDefined();
+      expect(runtime?.participants.size).toBe(2);
+
+      const p1 = runtime?.participants.get("part-1");
+      expect(p1).toBeDefined();
+      expect(p1?.name).toBe("Alice");
+      expect(p1?.email).toBe("alice@test.com");
+      expect(p1?.connected).toBe(false);
+      expect(p1?.socketId).toBeNull();
+
+      const p2 = runtime?.participants.get("part-2");
+      expect(p2).toBeDefined();
+      expect(p2?.name).toBe("Bob");
+      expect(p2?.email).toBeUndefined();
+      expect(p2?.connected).toBe(false);
+      expect(p2?.socketId).toBeNull();
     });
 
     it("should throw a 404 error if session is not found", async () => {

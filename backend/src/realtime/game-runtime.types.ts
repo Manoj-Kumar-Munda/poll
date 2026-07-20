@@ -1,10 +1,11 @@
-/**
- * Runtime participant data.
- *
- * This is intentionally empty until participant-specific runtime state is
- * introduced by a later feature.
- */
-export interface RuntimeParticipant {}
+export interface RuntimeParticipant {
+  participantId: string;
+  name: string;
+  email?: string;
+  connected: boolean;
+  socketId: string | null;
+  joinedAt: Date;
+}
 
 /** Runtime question data, to be defined by the question flow. */
 export interface RuntimeQuestion {}
