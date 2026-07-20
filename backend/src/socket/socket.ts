@@ -3,6 +3,7 @@ import type { Server as HttpServer } from "node:http";
 
 import { config } from "@/config/index.js";
 import { handleConnection } from "./handlers/connection.handler.js";
+import { authMiddleware } from "./middleware/auth.middleware.js";
 
 let io: Server;
 
@@ -17,6 +18,8 @@ export const initSocket = (httpServer: HttpServer): Server => {
       credentials: true,
     },
   });
+
+  io.use(authMiddleware);
 
   io.on("connection", (socket) => {
     handleConnection(io, socket);
