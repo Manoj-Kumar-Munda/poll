@@ -3,6 +3,7 @@
  */
 export const HOST_EVENTS = {
   JOIN: "host:join",
+  JOIN_SESSION: "host:join-session",
   START_SESSION: "host:start_session",
   END_SESSION: "host:end_session",
   START_QUESTION: "host:start_question",

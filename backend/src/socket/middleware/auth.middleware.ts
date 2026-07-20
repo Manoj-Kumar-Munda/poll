@@ -25,11 +25,14 @@ export const authMiddleware = async (
         return next(new Error("Unauthorized"));
       }
 
-      socket.data.user = {
+      const hostInfo = {
         id: session.user.id,
         email: session.user.email,
         name: session.user.name,
       };
+
+      socket.data.host = hostInfo;
+      socket.data.user = hostInfo;
 
       return next();
     } catch (error) {
