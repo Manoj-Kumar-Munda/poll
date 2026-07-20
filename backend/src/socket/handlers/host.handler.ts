@@ -3,6 +3,7 @@ import type { Socket, Server } from "socket.io";
 import { HOST_EVENTS, SERVER_EVENTS } from "../events.js";
 import { getSessionRoom, getHostRoom } from "../rooms.js";
 import { sessionRepository } from "@/modules/sessions/session.repository.js";
+import { gameFlowService } from "@/modules/game-flow/game-flow.service.js";
 import { objectIdRegex } from "@/utils/helpers.js";
 
 const joinSessionPayloadSchema = z.object({
@@ -55,22 +56,40 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
     }
   );
   // Handle session start
-  socket.on(HOST_EVENTS.START_SESSION, (data: { sessionId: string }) => {
-    const { sessionId } = data;
-    if (!sessionId) {
-      console.warn(`[socket] Session start failed: sessionId is missing from socket ${socket.id}`);
-      return;
+  socket.on(
+    HOST_EVENTS.START_SESSION,
+    async (_payload: unknown, callback?: (response: any) => void) => {
+      const sessionId = socket.data.sessionId;
+      if (!sessionId) {
+        return callback?.({ error: "No active session" });
+      }
+
+      if (!socket.data.host || !socket.data.host.id) {
+        return callback?.({ error: "Unauthorized" });
+      }
+
+      try {
+        const startedSession = await gameFlowService.startSession(sessionId);
+
+        // Broadcast to the entire session room
+        io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.SESSION_STARTED, {
+          sessionId,
+          status: "LIVE",
+          startedAt: startedSession.startedAt,
+        });
+
+        // Acknowledge success to host
+        callback?.({
+          success: true,
+          sessionId,
+          status: "LIVE",
+        });
+      } catch (error: any) {
+        console.error("[socket] Error starting session:", error);
+        callback?.({ error: error.message || "Internal error" });
+      }
     }
-
-    console.log(`[socket] Host ${socket.id} starting session: ${sessionId}`);
-
-    // Join session-wide room and host-specific room
-    socket.join(getSessionRoom(sessionId));
-    socket.join(getHostRoom(sessionId));
-
-    // Broadcast session started to all clients in the session room
-    io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.SESSION_STARTED, { sessionId });
-  });
+  );
 
   // Handle session end
   socket.on(HOST_EVENTS.END_SESSION, (data: { sessionId: string }) => {
