@@ -14,7 +14,7 @@ export const HOST_EVENTS = {
  * Events emitted by the participant client to the server.
  */
 export const PARTICIPANT_EVENTS = {
-  JOIN: "participant:join",
+  JOIN_SESSION: "participant:join-session",
   ANSWER: "participant:answer",
 } as const;
 
@@ -29,6 +29,8 @@ export const SERVER_EVENTS = {
   LEADERBOARD_UPDATED: "leaderboard:updated",
   STATISTICS_UPDATED: "statistics:updated",
   PARTICIPANT_JOINED: "participant:joined",
+  PARTICIPANT_CONNECTED: "participant:connected",
+  PARTICIPANT_DISCONNECTED: "participant:disconnected",
   PARTICIPANT_ANSWERED: "participant:answered",
 } as const;
 

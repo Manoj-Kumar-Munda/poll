@@ -47,6 +47,7 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
         }
 
         await socket.join(getSessionRoom(sessionId));
+        await socket.join(getHostRoom(sessionId));
         await socket.join(`host:${socket.data.host.id}`);
 
         socket.data.sessionId = sessionId;
