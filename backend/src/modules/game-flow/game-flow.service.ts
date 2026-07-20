@@ -119,4 +119,13 @@ export const gameFlowService = {
     // 5. Return Result
     return updatedSession;
   },
+
+  /**
+   * Ends a question runtime. Placeholder integration point.
+   */
+  async endQuestion(sessionId: string, questionId: string) {
+    console.log(
+      `[gameFlowService] endQuestion integration point called for session: ${sessionId}, question: ${questionId}`
+    );
+  },
 };

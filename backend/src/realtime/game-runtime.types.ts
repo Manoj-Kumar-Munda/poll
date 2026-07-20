@@ -11,8 +11,12 @@ export interface RuntimeParticipant {
   hasAnsweredCurrentQuestion: boolean;
 }
 
-/** Runtime question data, to be defined by the question flow. */
-export interface RuntimeQuestion {}
+export interface RuntimeQuestion {
+  questionId: string;
+  order: number;
+  startedAt: Date;
+  endsAt: Date;
+}
 
 /** Runtime submission data, to be defined by answer handling. */
 export interface RuntimeSubmission {}

@@ -3,11 +3,18 @@ import type { Socket, Server } from "socket.io";
 import { HOST_EVENTS, SERVER_EVENTS } from "../events.js";
 import { getSessionRoom, getHostRoom } from "../rooms.js";
 import { sessionRepository } from "@/modules/sessions/session.repository.js";
+import { gameRepository } from "@/modules/games/game.repository.js";
 import { gameFlowService } from "@/modules/game-flow/game-flow.service.js";
+import { gameRuntimeManager } from "@/realtime/game-runtime.manager.js";
+import { gameTimerManager } from "@/realtime/timer/game-timer.manager.js";
 import { objectIdRegex } from "@/utils/helpers.js";
 
 const joinSessionPayloadSchema = z.object({
   sessionId: z.string().regex(objectIdRegex, "Invalid session ID"),
+});
+
+const launchQuestionPayloadSchema = z.object({
+  questionId: z.string({ error: "Invalid question ID" }).min(1),
 });
 
 /**
@@ -108,24 +115,90 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
   // Handle question start
   socket.on(
     HOST_EVENTS.LAUNCH_QUESTION,
-    (data: { sessionId: string; questionId: string }) => {
-      const { sessionId, questionId } = data;
-      if (!sessionId || !questionId) {
-        console.warn(
-          `[socket] Question start failed: sessionId or questionId is missing from socket ${socket.id}`
-        );
-        return;
+    async (payload: unknown, callback?: (response: any) => void) => {
+      const parsed = launchQuestionPayloadSchema.safeParse(payload);
+      if (!parsed.success) {
+        return callback?.({ error: "Invalid payload" });
       }
 
-      console.log(
-        `[socket] Host ${socket.id} starting question ${questionId} in session ${sessionId}`
-      );
+      const { questionId } = parsed.data;
+      const sessionId = socket.data.sessionId;
+      if (!sessionId) {
+        return callback?.({ error: "No active session" });
+      }
 
-      // Broadcast question started to all clients in the session room
-      io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.QUESTION_STARTED, {
-        sessionId,
-        questionId,
-      });
+      const runtime = gameRuntimeManager.get(sessionId);
+      if (!runtime) {
+        return callback?.({ error: "Runtime not found" });
+      }
+
+      if (runtime.currentQuestion !== null) {
+        return callback?.({ error: "Another question is currently active" });
+      }
+
+      try {
+        const session = await sessionRepository.findById(sessionId);
+        if (!session) {
+          return callback?.({ error: "Session not found" });
+        }
+        if (session.status !== "LIVE") {
+          return callback?.({ error: "Session is not live" });
+        }
+
+        const game = await gameRepository.findById(session.gameId.toString());
+        if (!game) {
+          return callback?.({ error: "Game not found" });
+        }
+
+        const questionObj = game.questions.find((q: any) => q.id === questionId);
+        if (!questionObj) {
+          return callback?.({ error: "Question not found" });
+        }
+
+        const startedAt = new Date();
+        const endsAt = new Date(startedAt.getTime() + game.timeLimitPerQuestion * 1000);
+
+        runtime.currentQuestion = {
+          questionId,
+          order: questionObj.order,
+          startedAt,
+          endsAt,
+        };
+
+        for (const p of runtime.participants.values()) {
+          p.hasAnsweredCurrentQuestion = false;
+        }
+
+        runtime.submissions = {};
+        runtime.statistics = {};
+
+        gameTimerManager.startQuestionTimer(
+          sessionId,
+          questionId,
+          endsAt,
+          async (sId, qId) => {
+            try {
+              await gameFlowService.endQuestion(sId, qId);
+            } catch (err) {
+              console.error("[timer] Error in endQuestion callback:", err);
+            }
+          }
+        );
+
+        io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.QUESTION_STARTED, {
+          questionId,
+          question: questionObj.question,
+          type: questionObj.type,
+          options: questionObj.options,
+          startedAt,
+          endsAt,
+        });
+
+        callback?.({ success: true });
+      } catch (error) {
+        console.error("[socket] Error launching question:", error);
+        callback?.({ error: "Internal error" });
+      }
     }
   );
 
