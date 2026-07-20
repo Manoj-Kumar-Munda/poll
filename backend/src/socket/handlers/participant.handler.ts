@@ -17,7 +17,10 @@ type JoinSessionAcknowledgement =
 /**
  * Registers event handlers for a connected participant socket.
  */
-export const registerParticipantHandlers = (socket: Socket, io: Server): void => {
+export const registerParticipantHandlers = (
+  socket: Socket,
+  io: Server,
+): void => {
   socket.on(
     PARTICIPANT_EVENTS.JOIN_SESSION,
     async (
@@ -83,29 +86,25 @@ export const registerParticipantHandlers = (socket: Socket, io: Server): void =>
     runtimeParticipant.connected = false;
     runtimeParticipant.socketId = null;
 
-    io.to(getHostRoom(sessionId)).emit(
-      SERVER_EVENTS.PARTICIPANT_DISCONNECTED,
-      {
-        participantId,
-        name: runtimeParticipant.name,
-      },
-    );
+    io.to(getHostRoom(sessionId)).emit(SERVER_EVENTS.PARTICIPANT_DISCONNECTED, {
+      participantId,
+      name: runtimeParticipant.name,
+    });
   });
 
-  // Handle participant answer submission
   socket.on(
     PARTICIPANT_EVENTS.ANSWER,
     (data: { sessionId: string; questionId: string; answer: any }) => {
       const { sessionId, questionId, answer } = data;
       if (!sessionId) {
         console.warn(
-          `[socket] Answer submission failed: sessionId is missing from socket ${socket.id}`
+          `[socket] Answer submission failed: sessionId is missing from socket ${socket.id}`,
         );
         return;
       }
 
       console.log(
-        `[socket] Participant ${socket.id} submitted answer for question ${questionId} in session ${sessionId}`
+        `[socket] Participant ${socket.id} submitted answer for question ${questionId} in session ${sessionId}`,
       );
 
       // Forward the live submission to the host room
@@ -114,6 +113,6 @@ export const registerParticipantHandlers = (socket: Socket, io: Server): void =>
         questionId,
         answer,
       });
-    }
+    },
   );
 };
