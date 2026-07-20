@@ -35,4 +35,15 @@ export const sessionRepository = {
   findByIdAndDelete(id: string) {
     return Session.findByIdAndDelete(id);
   },
+
+  findOneAndUpdate(
+    filter: Record<string, unknown>,
+    update: Partial<SessionDocument>,
+  ) {
+    return Session.findOneAndUpdate(
+      filter,
+      { $set: update },
+      { returnDocument: 'after', runValidators: true },
+    );
+  },
 };
