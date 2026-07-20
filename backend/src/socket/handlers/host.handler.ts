@@ -107,7 +107,7 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
 
   // Handle question start
   socket.on(
-    HOST_EVENTS.START_QUESTION,
+    HOST_EVENTS.LAUNCH_QUESTION,
     (data: { sessionId: string; questionId: string }) => {
       const { sessionId, questionId } = data;
       if (!sessionId || !questionId) {
