@@ -2,10 +2,11 @@
  * Events emitted by the host client to the server.
  */
 export const HOST_EVENTS = {
-  SESSION_START: "session:start",
-  SESSION_END: "session:end",
-  QUESTION_START: "question:start",
-  QUESTION_END: "question:end",
+  JOIN: "host:join",
+  START_SESSION: "host:start_session",
+  END_SESSION: "host:end_session",
+  START_QUESTION: "host:start_question",
+  END_QUESTION: "host:end_question",
 } as const;
 
 /**
@@ -21,7 +22,18 @@ export const PARTICIPANT_EVENTS = {
  */
 export const SERVER_EVENTS = {
   SESSION_STARTED: "session:started",
+  SESSION_ENDED: "session:ended",
   QUESTION_STARTED: "question:started",
+  QUESTION_ENDED: "question:ended",
   LEADERBOARD_UPDATED: "leaderboard:updated",
   STATISTICS_UPDATED: "statistics:updated",
+  PARTICIPANT_JOINED: "participant:joined",
+  PARTICIPANT_ANSWERED: "participant:answered",
+} as const;
+
+/**
+ * System-level events.
+ */
+export const SYSTEM_EVENTS = {
+  IDENTIFY: "identify",
 } as const;

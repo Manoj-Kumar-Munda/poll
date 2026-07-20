@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import type { Server as HttpServer } from "node:http";
 
 import { config } from "@/config/index.js";
+import { handleConnection } from "./handlers/connection.handler.js";
 
 let io: Server;
 
@@ -17,26 +18,11 @@ export const initSocket = (httpServer: HttpServer): Server => {
     },
   });
 
-  const hostNamespace = io.of("/host");
-  const participantNamespace = io.of("/participant");
-
-  hostNamespace.on("connection", (socket) => {
-    console.log(`[socket] host connected: ${socket.id}`);
-
-    socket.on("disconnect", (reason) => {
-      console.log(`[socket] host disconnected: ${socket.id} — reason: ${reason}`);
-    });
+  io.on("connection", (socket) => {
+    handleConnection(io, socket);
   });
 
-  participantNamespace.on("connection", (socket) => {
-    console.log(`[socket] participant connected: ${socket.id}`);
-
-    socket.on("disconnect", (reason) => {
-      console.log(`[socket] participant disconnected: ${socket.id} — reason: ${reason}`);
-    });
-  });
-
-  console.log("[socket] Socket.IO server initialised (/host, /participant)");
+  console.log("[socket] Socket.IO server initialised (single instance on '/')");
 
   return io;
 };
