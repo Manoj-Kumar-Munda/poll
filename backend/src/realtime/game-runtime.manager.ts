@@ -1,11 +1,4 @@
-import type {
-  GameRuntime,
-  RuntimeLeaderboard,
-  RuntimeParticipant,
-  RuntimeQuestion,
-  RuntimeStatistics,
-  RuntimeSubmission,
-} from "./game-runtime.types.js";
+import type { GameRuntime, RuntimeParticipant } from "./game-runtime.types.js";
 
 export class GameRuntimeManager {
   private readonly runtimes = new Map<string, GameRuntime>();
@@ -17,11 +10,10 @@ export class GameRuntimeManager {
     const runtime: GameRuntime = {
       sessionId,
       participants: new Map<string, RuntimeParticipant>(),
-      currentQuestion: null as RuntimeQuestion | null,
-      submissions: {} as RuntimeSubmission,
-      leaderboard: {} as RuntimeLeaderboard,
-      statistics: {} as RuntimeStatistics,
-      timer: null,
+      currentQuestion: null,
+      submissions: {},
+      leaderboard: {},
+      statistics: {},
     };
 
     this.runtimes.set(sessionId, runtime);
@@ -37,20 +29,6 @@ export class GameRuntimeManager {
   }
 
   remove(sessionId: string): boolean {
-    const runtime = this.runtimes.get(sessionId);
-    if (!runtime) return false;
-
-    if (runtime.timer) {
-      clearTimeout(runtime.timer);
-      runtime.timer = null;
-    }
-
-    runtime.participants.clear();
-    runtime.currentQuestion = null;
-    runtime.submissions = {} as RuntimeSubmission;
-    runtime.leaderboard = {} as RuntimeLeaderboard;
-    runtime.statistics = {} as RuntimeStatistics;
-
     return this.runtimes.delete(sessionId);
   }
 

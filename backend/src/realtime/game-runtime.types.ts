@@ -25,5 +25,4 @@ export interface GameRuntime {
   submissions: RuntimeSubmission;
   leaderboard: RuntimeLeaderboard;
   statistics: RuntimeStatistics;
-  timer: NodeJS.Timeout | null;
 }
