@@ -2,9 +2,13 @@ export interface RuntimeParticipant {
   participantId: string;
   name: string;
   email?: string;
-  connected: boolean;
   socketId: string | null;
+  connected: boolean;
   joinedAt: Date;
+  score: number;
+  rank: number;
+  streak: number;
+  hasAnsweredCurrentQuestion: boolean;
 }
 
 /** Runtime question data, to be defined by the question flow. */

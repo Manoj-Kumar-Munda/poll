@@ -57,6 +57,10 @@ export const gameFlowService = {
           connected: false,
           socketId: null,
           joinedAt: p.joinedAt,
+          score: 0,
+          rank: 0,
+          streak: 0,
+          hasAnsweredCurrentQuestion: false,
         });
       }
     }
