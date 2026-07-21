@@ -19,9 +19,8 @@ describe("GameRuntimeManager", () => {
     expect(runtime.sessionId).toBe(sessionId);
     expect(runtime.participants).toBeInstanceOf(Map);
     expect(runtime.currentQuestion).toBeNull();
-    expect(runtime.submissions).toEqual({});
-    expect(runtime.leaderboard).toEqual({});
-    expect(runtime.statistics).toEqual({});
+    expect(runtime.submissions).toBeInstanceOf(Map);
+    expect(runtime.submissions.size).toBe(0);
   });
 
   it("should retrieve an existing game runtime", () => {

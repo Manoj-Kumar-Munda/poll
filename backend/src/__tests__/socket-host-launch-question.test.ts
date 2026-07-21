@@ -62,8 +62,7 @@ describe("Socket.IO host:launch_question Event Handler", () => {
         ["p-2", { participantId: "p-2", name: "Bob", hasAnsweredCurrentQuestion: true }],
       ]),
       currentQuestion: null,
-      submissions: { someOldSub: true },
-      statistics: { someOldStat: true },
+      submissions: new Map([["someOldSub", {} as any]]),
     };
 
     mockSocket = {
@@ -216,9 +215,9 @@ describe("Socket.IO host:launch_question Event Handler", () => {
     expect(mockRuntime.participants.get("p-1").hasAnsweredCurrentQuestion).toBe(false);
     expect(mockRuntime.participants.get("p-2").hasAnsweredCurrentQuestion).toBe(false);
 
-    // Verify submissions and stats reset
-    expect(mockRuntime.submissions).toEqual({});
-    expect(mockRuntime.statistics).toEqual({});
+    // Verify submissions reset
+    expect(mockRuntime.submissions).toBeInstanceOf(Map);
+    expect(mockRuntime.submissions.size).toBe(0);
 
     // Verify timer start
     expect(gameTimerManager.startQuestionTimer).toHaveBeenCalledWith(

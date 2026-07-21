@@ -53,14 +53,17 @@ export const gameFlowService = {
         runtime.participants.set(p._id.toString(), {
           participantId: p._id.toString(),
           name: p.name,
-          email: p.email || undefined,
           connected: false,
           socketId: null,
-          joinedAt: p.joinedAt,
-          score: 0,
-          rank: 0,
-          streak: 0,
           hasAnsweredCurrentQuestion: false,
+          stats: {
+            score: 0,
+            correctAnswers: 0,
+            answeredQuestions: 0,
+            totalResponseTimeMs: 0,
+            streak: 0,
+            rank: 0,
+          },
         });
       }
     }

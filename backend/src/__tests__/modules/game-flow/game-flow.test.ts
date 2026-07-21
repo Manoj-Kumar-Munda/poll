@@ -119,16 +119,30 @@ describe("GameFlowService (Session Lifecycle)", () => {
       const p1 = runtime?.participants.get("part-1");
       expect(p1).toBeDefined();
       expect(p1?.name).toBe("Alice");
-      expect(p1?.email).toBe("alice@test.com");
       expect(p1?.connected).toBe(false);
       expect(p1?.socketId).toBeNull();
+      expect(p1?.stats).toEqual({
+        score: 0,
+        correctAnswers: 0,
+        answeredQuestions: 0,
+        totalResponseTimeMs: 0,
+        streak: 0,
+        rank: 0,
+      });
 
       const p2 = runtime?.participants.get("part-2");
       expect(p2).toBeDefined();
       expect(p2?.name).toBe("Bob");
-      expect(p2?.email).toBeUndefined();
       expect(p2?.connected).toBe(false);
       expect(p2?.socketId).toBeNull();
+      expect(p2?.stats).toEqual({
+        score: 0,
+        correctAnswers: 0,
+        answeredQuestions: 0,
+        totalResponseTimeMs: 0,
+        streak: 0,
+        rank: 0,
+      });
     });
 
     it("should throw a 404 error if session is not found", async () => {
