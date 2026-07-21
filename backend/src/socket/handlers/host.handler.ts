@@ -6,7 +6,7 @@ import { sessionRepository } from "@/modules/sessions/session.repository.js";
 import { gameRepository } from "@/modules/games/game.repository.js";
 import { gameFlowService } from "@/modules/game-flow/game-flow.service.js";
 import { gameRuntimeManager } from "@/realtime/game-runtime.manager.js";
-import { gameTimerManager } from "@/realtime/timer/game-timer.manager.js";
+import { questionTimerManager } from "@/realtime/timer/question-timer.manager.js";
 import { objectIdRegex } from "@/utils/helpers.js";
 
 const joinSessionPayloadSchema = z.object({
@@ -20,6 +20,10 @@ const launchQuestionPayloadSchema = z.object({
 const endQuestionPayloadSchema = z.object({
   sessionId: z.string().min(1),
   questionId: z.string().min(1),
+});
+
+const endSessionPayloadSchema = z.object({
+  sessionId: z.string().regex(objectIdRegex, "Invalid session ID"),
 });
 
 /**
@@ -66,7 +70,7 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
         console.error("[socket] Error in host:join-session:", error);
         callback?.({ error: "Internal error" });
       }
-    }
+    },
   );
   // Handle session start
   socket.on(
@@ -101,22 +105,55 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
         console.error("[socket] Error starting session:", error);
         callback?.({ error: error.message || "Internal error" });
       }
-    }
+    },
   );
 
   // Handle session end
-  socket.on(HOST_EVENTS.END_SESSION, (data: { sessionId: string }) => {
-    const { sessionId } = data;
-    if (!sessionId) {
-      console.warn(`[socket] Session end failed: sessionId is missing from socket ${socket.id}`);
-      return;
-    }
+  socket.on(
+    HOST_EVENTS.END_SESSION,
+    async (data: unknown, callback?: (response: any) => void) => {
+      const parsed = endSessionPayloadSchema.safeParse(data);
+      if (!parsed.success) {
+        return callback?.({ error: "Invalid payload" });
+      }
 
-    console.log(`[socket] Host ${socket.id} ending session: ${sessionId}`);
+      const { sessionId } = parsed.data;
+      const hostSessionId = socket.data.sessionId;
+      if (!hostSessionId || sessionId !== hostSessionId) {
+        return callback?.({ error: "Invalid session" });
+      }
 
-    // Broadcast session ended to all clients in the session room
-    io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.SESSION_ENDED, { sessionId });
-  });
+      if (!socket.data.host?.id) {
+        return callback?.({ error: "Unauthorized" });
+      }
+
+      try {
+        /* Close the active question first so clients do not remain in a
+        question state after the session has ended. */
+        await endQuestion(
+          sessionId,
+          gameRuntimeManager.get(sessionId)?.currentQuestion?.questionId,
+        );
+
+        const endedSession = await gameFlowService.endSession(sessionId);
+
+        io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.SESSION_ENDED, {
+          sessionId,
+          status: endedSession.status,
+          endedAt: endedSession.endedAt,
+        });
+
+        callback?.({
+          success: true,
+          sessionId,
+          status: endedSession.status,
+        });
+      } catch (error: any) {
+        console.error("[socket] Error ending session:", error);
+        callback?.({ error: error.message || "Internal error" });
+      }
+    },
+  );
 
   // Handle question start
   socket.on(
@@ -156,13 +193,17 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
           return callback?.({ error: "Game not found" });
         }
 
-        const questionObj = game.questions.find((q: any) => q.id === questionId);
+        const questionObj = game.questions.find(
+          (q: any) => q.id === questionId,
+        );
         if (!questionObj) {
           return callback?.({ error: "Question not found" });
         }
 
         const startedAt = new Date();
-        const endsAt = new Date(startedAt.getTime() + game.timeLimitPerQuestion * 1000);
+        const endsAt = new Date(
+          startedAt.getTime() + game.timeLimitPerQuestion * 1000,
+        );
 
         runtime.currentQuestion = {
           questionId,
@@ -178,7 +219,7 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
 
         runtime.submissions = new Map();
 
-        gameTimerManager.startQuestionTimer(
+        questionTimerManager.startQuestionTimer(
           sessionId,
           questionId,
           endsAt,
@@ -188,7 +229,7 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
             } catch (err) {
               console.error("[timer] Error in endQuestion callback:", err);
             }
-          }
+          },
         );
 
         io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.QUESTION_STARTED, {
@@ -205,16 +246,19 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
         console.error("[socket] Error launching question:", error);
         callback?.({ error: "Internal error" });
       }
-    }
+    },
   );
 
   // Handle question end
   socket.on(
     HOST_EVENTS.END_QUESTION,
-    (data: unknown) => {
+    (data: unknown, callback?: (response: any) => void) => {
       const parsed = endQuestionPayloadSchema.safeParse(data);
       if (!parsed.success) {
-        console.warn(`[socket] Question end failed: invalid payload from socket ${socket.id}`);
+        console.warn(
+          `[socket] Question end failed: invalid payload from socket ${socket.id}`,
+        );
+        callback?.({ error: "Invalid payload" });
         return;
       }
 
@@ -222,27 +266,37 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
       const hostSessionId = socket.data.sessionId;
       if (!sessionId || !questionId || sessionId !== hostSessionId) {
         console.warn(
-          `[socket] Question end failed: invalid session or questionId from socket ${socket.id}`
+          `[socket] Question end failed: invalid session or questionId from socket ${socket.id}`,
         );
+        callback?.({ error: "Invalid session" });
         return;
       }
 
       console.log(
-        `[socket] Host ${socket.id} ending question ${questionId} in session ${sessionId}`
+        `[socket] Host ${socket.id} ending question ${questionId} in session ${sessionId}`,
       );
 
-      void endQuestion(sessionId, questionId).catch((error) => {
-        console.error("[socket] Error ending question:", error);
-      });
-    }
+      void endQuestion(sessionId, questionId)
+        .then(() => {
+          callback?.({ success: true, sessionId, questionId });
+        })
+        .catch((error) => {
+          console.error("[socket] Error ending question:", error);
+          callback?.({ error: error.message || "Internal error" });
+        });
+    },
   );
 
-  async function endQuestion(sessionId: string, questionId: string): Promise<void> {
+  async function endQuestion(
+    sessionId: string,
+    questionId?: string,
+  ): Promise<void> {
     const runtime = gameRuntimeManager.get(sessionId);
     const activeQuestion = runtime?.currentQuestion;
-    if (!runtime || !activeQuestion || activeQuestion.questionId !== questionId) return;
+    if (!runtime || !activeQuestion) return;
+    if (questionId && activeQuestion.questionId !== questionId) return;
 
-    gameTimerManager.cancelQuestionTimer(sessionId);
+    questionTimerManager.cancelQuestionTimer(sessionId);
     runtime.currentQuestion = null;
 
     // The answer is deliberately sent only now, after submissions are closed.

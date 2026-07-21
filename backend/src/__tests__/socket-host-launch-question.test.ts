@@ -21,8 +21,8 @@ vi.mock("../realtime/game-runtime.manager.js", () => ({
   },
 }));
 
-vi.mock("../realtime/timer/game-timer.manager.js", () => ({
-  gameTimerManager: {
+vi.mock("../realtime/timer/question-timer.manager.js", () => ({
+  questionTimerManager: {
     startQuestionTimer: vi.fn(),
   },
 }));
@@ -36,8 +36,8 @@ const { gameRepository } = await import(
 const { gameRuntimeManager } = await import(
   "../realtime/game-runtime.manager.js"
 );
-const { gameTimerManager } = await import(
-  "../realtime/timer/game-timer.manager.js"
+const { questionTimerManager } = await import(
+  "../realtime/timer/question-timer.manager.js"
 );
 
 const HOST_ID = "507f1f77bcf86cd799439011";
@@ -220,7 +220,7 @@ describe("Socket.IO host:launch_question Event Handler", () => {
     expect(mockRuntime.submissions.size).toBe(0);
 
     // Verify timer start
-    expect(gameTimerManager.startQuestionTimer).toHaveBeenCalledWith(
+    expect(questionTimerManager.startQuestionTimer).toHaveBeenCalledWith(
       SESSION_ID,
       QUESTION_ID,
       expect.any(Date),

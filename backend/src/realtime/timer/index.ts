@@ -1,5 +1,5 @@
 export {
-  GameTimerManager,
-  gameTimerManager,
-} from "./game-timer.manager.js";
-export type { GameTimerCallback } from "./game-timer.types.js";
+  QuestionTimerManager,
+  questionTimerManager,
+} from "./question-timer.manager.js";
+export type { QuestionTimerCallback } from "./question-timer.types.js";

@@ -3,6 +3,7 @@ import { sessionRepository } from "@/modules/sessions/session.repository.js";
 import { gameRepository } from "@/modules/games/game.repository.js";
 import { participantRepository } from "@/modules/participants/participant.repository.js";
 import { gameRuntimeManager } from "@/realtime/game-runtime.manager.js";
+import { questionTimerManager } from "@/realtime/timer/question-timer.manager.js";
 
 export const gameFlowService = {
   /**
@@ -89,13 +90,11 @@ export const gameFlowService = {
    * @throws ApiError if the session is not found or is not currently LIVE.
    */
   async endSession(sessionId: string) {
-    // 1. Fetch Session
     const session = await sessionRepository.findById(sessionId);
     if (!session) {
       throw new ApiError(404, "Session not found");
     }
 
-    // 2. Validate State
     if (session.status !== "LIVE") {
       throw new ApiError(
         400,
@@ -103,7 +102,6 @@ export const gameFlowService = {
       );
     }
 
-    // 3. Update Session
     const updatedSession = await sessionRepository.findOneAndUpdate(
       { _id: session._id },
       {
@@ -116,10 +114,9 @@ export const gameFlowService = {
       throw new ApiError(500, "Failed to update session status");
     }
 
-    // 4. Remove Runtime
+    questionTimerManager.cancelQuestionTimer(sessionId);
     gameRuntimeManager.remove(sessionId);
 
-    // 5. Return Result
     return updatedSession;
   },
 
@@ -128,7 +125,7 @@ export const gameFlowService = {
    */
   async endQuestion(sessionId: string, questionId: string) {
     console.log(
-      `[gameFlowService] endQuestion integration point called for session: ${sessionId}, question: ${questionId}`
+      `[gameFlowService] endQuestion integration point called for session: ${sessionId}, question: ${questionId}`,
     );
   },
 };

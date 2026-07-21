@@ -1,13 +1,13 @@
-import type { GameTimerCallback } from "./game-timer.types.js";
+import type { QuestionTimerCallback } from "./question-timer.types.js";
 
-export class GameTimerManager {
+export class QuestionTimerManager {
   private readonly timers = new Map<string, NodeJS.Timeout>();
 
   startQuestionTimer(
     sessionId: string,
     questionId: string,
     endsAt: Date,
-    onExpire: GameTimerCallback,
+    onExpire: QuestionTimerCallback,
   ): void {
     this.cancelQuestionTimer(sessionId);
 
@@ -42,4 +42,4 @@ export class GameTimerManager {
   }
 }
 
-export const gameTimerManager = new GameTimerManager();
+export const questionTimerManager = new QuestionTimerManager();
