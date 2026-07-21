@@ -17,6 +17,11 @@ const launchQuestionPayloadSchema = z.object({
   questionId: z.string({ error: "Invalid question ID" }).min(1),
 });
 
+const endQuestionPayloadSchema = z.object({
+  sessionId: z.string().min(1),
+  questionId: z.string().min(1),
+});
+
 /**
  * Registers event handlers for a connected host socket.
  */
@@ -164,14 +169,14 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
           order: questionObj.order,
           startedAt,
           endsAt,
+          correctAnswer: questionObj.correctAnswer ?? undefined,
         };
 
         for (const p of runtime.participants.values()) {
           p.hasAnsweredCurrentQuestion = false;
         }
 
-        runtime.submissions = {};
-        runtime.statistics = {};
+        runtime.submissions = new Map();
 
         gameTimerManager.startQuestionTimer(
           sessionId,
@@ -179,7 +184,7 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
           endsAt,
           async (sId, qId) => {
             try {
-              await gameFlowService.endQuestion(sId, qId);
+              await endQuestion(sId, qId);
             } catch (err) {
               console.error("[timer] Error in endQuestion callback:", err);
             }
@@ -206,11 +211,18 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
   // Handle question end
   socket.on(
     HOST_EVENTS.END_QUESTION,
-    (data: { sessionId: string; questionId: string }) => {
-      const { sessionId, questionId } = data;
-      if (!sessionId || !questionId) {
+    (data: unknown) => {
+      const parsed = endQuestionPayloadSchema.safeParse(data);
+      if (!parsed.success) {
+        console.warn(`[socket] Question end failed: invalid payload from socket ${socket.id}`);
+        return;
+      }
+
+      const { sessionId, questionId } = parsed.data;
+      const hostSessionId = socket.data.sessionId;
+      if (!sessionId || !questionId || sessionId !== hostSessionId) {
         console.warn(
-          `[socket] Question end failed: sessionId or questionId is missing from socket ${socket.id}`
+          `[socket] Question end failed: invalid session or questionId from socket ${socket.id}`
         );
         return;
       }
@@ -219,11 +231,25 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
         `[socket] Host ${socket.id} ending question ${questionId} in session ${sessionId}`
       );
 
-      // Broadcast question ended to all clients in the session room
-      io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.QUESTION_ENDED, {
-        sessionId,
-        questionId,
+      void endQuestion(sessionId, questionId).catch((error) => {
+        console.error("[socket] Error ending question:", error);
       });
     }
   );
+
+  async function endQuestion(sessionId: string, questionId: string): Promise<void> {
+    const runtime = gameRuntimeManager.get(sessionId);
+    const activeQuestion = runtime?.currentQuestion;
+    if (!runtime || !activeQuestion || activeQuestion.questionId !== questionId) return;
+
+    gameTimerManager.cancelQuestionTimer(sessionId);
+    runtime.currentQuestion = null;
+
+    // The answer is deliberately sent only now, after submissions are closed.
+    io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.QUESTION_ENDED, {
+      sessionId,
+      questionId,
+      correctAnswer: activeQuestion.correctAnswer,
+    });
+  }
 };

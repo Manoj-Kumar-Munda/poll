@@ -14,6 +14,7 @@ declare module "socket.io" {
         name: string;
       };
       sessionId?: string;
+      participantId?: string;
     };
   }
 }

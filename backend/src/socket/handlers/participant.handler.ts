@@ -10,6 +10,12 @@ const joinSessionPayloadSchema = z.object({
   participantId: z.string().min(1),
 });
 
+const answerPayloadSchema = z.object({
+  sessionId: z.string().min(1),
+  questionId: z.string().min(1),
+  answer: z.unknown(),
+});
+
 type JoinSessionAcknowledgement =
   | { error: string }
   | { participantId: string; sessionId: string; connected: true };
@@ -94,14 +100,63 @@ export const registerParticipantHandlers = (
 
   socket.on(
     PARTICIPANT_EVENTS.ANSWER,
-    (data: { sessionId: string; questionId: string; answer: any }) => {
-      const { sessionId, questionId, answer } = data;
-      if (!sessionId) {
+    (data: unknown) => {
+      const parsed = answerPayloadSchema.safeParse(data);
+      if (!parsed.success) {
+        return socket.emit(SERVER_EVENTS.ANSWER_RESULT, {
+          isCorrect: false,
+          accepted: false,
+          message: "Invalid answer submission.",
+        });
+      }
+
+      const { sessionId, questionId, answer } = parsed.data;
+      const socketSessionId = socket.data.sessionId as string | undefined;
+      const participantId = socket.data.participantId as string | undefined;
+      const runtime = sessionId ? gameRuntimeManager.get(sessionId) : undefined;
+      const activeQuestion = runtime?.currentQuestion;
+
+      if (!sessionId || sessionId !== socketSessionId || !participantId) {
         console.warn(
-          `[socket] Answer submission failed: sessionId is missing from socket ${socket.id}`,
+          `[socket] Answer submission failed: invalid session for socket ${socket.id}`,
         );
         return;
       }
+
+      if (!questionId || !activeQuestion || activeQuestion.questionId !== questionId) {
+        return socket.emit(SERVER_EVENTS.ANSWER_RESULT, {
+          questionId,
+          answer,
+          isCorrect: false,
+          accepted: false,
+          message: "This question is no longer active.",
+        });
+      }
+
+      const participant = runtime.participants.get(participantId);
+      if (!participant || participant.hasAnsweredCurrentQuestion) {
+        return socket.emit(SERVER_EVENTS.ANSWER_RESULT, {
+          questionId,
+          answer,
+          isCorrect: false,
+          accepted: false,
+          message: "You have already answered this question.",
+        });
+      }
+
+      const normalise = (value: unknown) => String(value ?? "").trim().toLocaleLowerCase();
+      const isCorrect =
+        activeQuestion.correctAnswer != null &&
+        normalise(answer) === normalise(activeQuestion.correctAnswer);
+      const submittedAt = new Date();
+
+      participant.hasAnsweredCurrentQuestion = true;
+      runtime.submissions.set(participantId, {
+        participantId,
+        answer,
+        isCorrect,
+        submittedAt,
+      });
 
       console.log(
         `[socket] Participant ${socket.id} submitted answer for question ${questionId} in session ${sessionId}`,
@@ -110,9 +165,19 @@ export const registerParticipantHandlers = (
       // Forward the live submission to the host room
       io.to(getHostRoom(sessionId)).emit(SERVER_EVENTS.PARTICIPANT_ANSWERED, {
         socketId: socket.id,
+        participantId,
         questionId,
         answer,
+        isCorrect,
       });
+
+      socket.emit(SERVER_EVENTS.ANSWER_RESULT, {
+        questionId,
+        answer,
+        isCorrect,
+        accepted: true,
+      });
+
     },
   );
 };

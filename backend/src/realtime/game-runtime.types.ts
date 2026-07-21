@@ -1,14 +1,19 @@
+export interface ParticipantStats {
+    score: number;
+    correctAnswers: number;
+    answeredQuestions: number;
+    totalResponseTimeMs: number;
+    streak: number;
+    rank: number;
+}
+
 export interface RuntimeParticipant {
-  participantId: string;
-  name: string;
-  email?: string;
-  socketId: string | null;
-  connected: boolean;
-  joinedAt: Date;
-  score: number;
-  rank: number;
-  streak: number;
-  hasAnsweredCurrentQuestion: boolean;
+    participantId: string;
+    name: string;
+    socketId: string | null;
+    connected: boolean;
+    hasAnsweredCurrentQuestion: boolean;
+    stats: ParticipantStats;
 }
 
 export interface RuntimeQuestion {
@@ -16,22 +21,24 @@ export interface RuntimeQuestion {
   order: number;
   startedAt: Date;
   endsAt: Date;
+  /** Kept in the runtime and never included in question:started. */
+  correctAnswer?: string;
 }
 
-/** Runtime submission data, to be defined by answer handling. */
-export interface RuntimeSubmission {}
+export interface RuntimeSubmission {
+  participantId: string;
+  answer: unknown;
+  isCorrect: boolean;
+  submittedAt: Date;
+}
 
 /** Runtime leaderboard data, to be defined by scoring. */
 export interface RuntimeLeaderboard {}
 
-/** Runtime statistics data, to be defined by statistics tracking. */
-export interface RuntimeStatistics {}
 
 export interface GameRuntime {
   sessionId: string;
   participants: Map<string, RuntimeParticipant>;
   currentQuestion: RuntimeQuestion | null;
-  submissions: RuntimeSubmission;
-  leaderboard: RuntimeLeaderboard;
-  statistics: RuntimeStatistics;
+  submissions: Map<string, RuntimeSubmission>;
 }

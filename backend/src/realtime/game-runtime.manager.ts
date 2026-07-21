@@ -11,9 +11,7 @@ export class GameRuntimeManager {
       sessionId,
       participants: new Map<string, RuntimeParticipant>(),
       currentQuestion: null,
-      submissions: {},
-      leaderboard: {},
-      statistics: {},
+      submissions: new Map(),
     };
 
     this.runtimes.set(sessionId, runtime);

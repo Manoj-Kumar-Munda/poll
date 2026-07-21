@@ -32,6 +32,7 @@ export const SERVER_EVENTS = {
   PARTICIPANT_CONNECTED: "participant:connected",
   PARTICIPANT_DISCONNECTED: "participant:disconnected",
   PARTICIPANT_ANSWERED: "participant:answered",
+  ANSWER_RESULT: "answer:result",
 } as const;
 
 /**
