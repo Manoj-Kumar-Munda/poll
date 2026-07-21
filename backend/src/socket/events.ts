@@ -34,10 +34,3 @@ export const SERVER_EVENTS = {
   PARTICIPANT_ANSWERED: "participant:answered",
   ANSWER_RESULT: "answer:result",
 } as const;
-
-/**
- * System-level events.
- */
-export const SYSTEM_EVENTS = {
-  IDENTIFY: "identify",
-} as const;

@@ -1,12 +1,10 @@
 import type { Socket, Server } from "socket.io";
 import { registerHostHandlers } from "./host.handler.js";
 import { registerParticipantHandlers } from "./participant.handler.js";
-import { SYSTEM_EVENTS } from "../events.js";
 
 /**
  * Handles new Socket.IO connections.
- * Identifies the client's role immediately via handshake query/auth,
- * or dynamically via the 'identify' system event.
+ * Identifies the client's role via handshake query/auth.
  */
 export const handleConnection = (io: Server, socket: Socket): void => {
   // Check handshake query or auth for role
@@ -41,16 +39,6 @@ export const handleConnection = (io: Server, socket: Socket): void => {
   if (role) {
     registerRoleHandlers(role);
   }
-
-  // Also support dynamic identification via the identify event
-  socket.on(SYSTEM_EVENTS.IDENTIFY, (data: { role: string }) => {
-    if (!data || !data.role) {
-      console.warn(`[socket] Identify event payload is invalid from socket ${socket.id}`);
-      return;
-    }
-    console.log(`[socket] Received identify event: socket ${socket.id} identifies as ${data.role}`);
-    registerRoleHandlers(data.role);
-  });
 
   socket.on("disconnect", (reason) => {
     console.log(`[socket] Client disconnected: ${socket.id} (role: ${registeredRole ?? "none"}) — reason: ${reason}`);
