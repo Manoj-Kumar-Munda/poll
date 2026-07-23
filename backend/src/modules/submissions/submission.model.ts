@@ -17,8 +17,7 @@ const submissionSchema = new Schema(
       index: true,
     },
     questionId: {
-      type: Schema.Types.ObjectId,
-      ref: "Question",
+      type: String,
       required: true,
       index: true,
     },
