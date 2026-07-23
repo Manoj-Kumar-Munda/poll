@@ -3,6 +3,12 @@ import { registerHostHandlers } from "../socket/handlers/host.handler.js";
 import { HOST_EVENTS, SERVER_EVENTS } from "../socket/events.js";
 import { getSessionRoom } from "../socket/rooms.js";
 
+vi.mock("../modules/game-flow/game-flow.service.js", () => ({
+  gameFlowService: {
+    endQuestion: vi.fn(),
+  },
+}));
+
 vi.mock("../modules/sessions/session.repository.js", () => ({
   sessionRepository: {
     findById: vi.fn(),
@@ -24,21 +30,19 @@ vi.mock("../realtime/game-runtime.manager.js", () => ({
 vi.mock("../realtime/timer/question-timer.manager.js", () => ({
   questionTimerManager: {
     startQuestionTimer: vi.fn(),
+    cancelQuestionTimer: vi.fn(),
   },
 }));
 
-const { sessionRepository } = await import(
-  "../modules/sessions/session.repository.js"
-);
-const { gameRepository } = await import(
-  "../modules/games/game.repository.js"
-);
-const { gameRuntimeManager } = await import(
-  "../realtime/game-runtime.manager.js"
-);
-const { questionTimerManager } = await import(
-  "../realtime/timer/question-timer.manager.js"
-);
+const { sessionRepository } =
+  await import("../modules/sessions/session.repository.js");
+const { gameRepository } = await import("../modules/games/game.repository.js");
+const { gameRuntimeManager } =
+  await import("../realtime/game-runtime.manager.js");
+const { questionTimerManager } =
+  await import("../realtime/timer/question-timer.manager.js");
+const { gameFlowService } =
+  await import("../modules/game-flow/game-flow.service.js");
 
 const HOST_ID = "507f1f77bcf86cd799439011";
 const SESSION_ID = "507f1f77bcf86cd799439012";
@@ -58,8 +62,22 @@ describe("Socket.IO host:launch_question Event Handler", () => {
     mockRuntime = {
       sessionId: SESSION_ID,
       participants: new Map([
-        ["p-1", { participantId: "p-1", name: "Alice", hasAnsweredCurrentQuestion: true }],
-        ["p-2", { participantId: "p-2", name: "Bob", hasAnsweredCurrentQuestion: true }],
+        [
+          "p-1",
+          {
+            participantId: "p-1",
+            name: "Alice",
+            hasAnsweredCurrentQuestion: true,
+          },
+        ],
+        [
+          "p-2",
+          {
+            participantId: "p-2",
+            name: "Bob",
+            hasAnsweredCurrentQuestion: true,
+          },
+        ],
       ]),
       currentQuestion: null,
       submissions: new Map([["someOldSub", {} as any]]),
@@ -92,6 +110,17 @@ describe("Socket.IO host:launch_question Event Handler", () => {
 
   const triggerEvent = async (payload: any) => {
     const handler = handlers[HOST_EVENTS.LAUNCH_QUESTION];
+    if (!handler) throw new Error("Handler not registered");
+
+    return new Promise<any>((resolve) => {
+      handler(payload, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
+  const triggerEndQuestion = async (payload: any) => {
+    const handler = handlers[HOST_EVENTS.END_QUESTION];
     if (!handler) throw new Error("Handler not registered");
 
     return new Promise<any>((resolve) => {
@@ -212,8 +241,12 @@ describe("Socket.IO host:launch_question Event Handler", () => {
     expect(mockRuntime.currentQuestion.endsAt).toBeInstanceOf(Date);
 
     // Verify participants reset
-    expect(mockRuntime.participants.get("p-1").hasAnsweredCurrentQuestion).toBe(false);
-    expect(mockRuntime.participants.get("p-2").hasAnsweredCurrentQuestion).toBe(false);
+    expect(mockRuntime.participants.get("p-1").hasAnsweredCurrentQuestion).toBe(
+      false,
+    );
+    expect(mockRuntime.participants.get("p-2").hasAnsweredCurrentQuestion).toBe(
+      false,
+    );
 
     // Verify submissions reset
     expect(mockRuntime.submissions).toBeInstanceOf(Map);
@@ -224,7 +257,7 @@ describe("Socket.IO host:launch_question Event Handler", () => {
       SESSION_ID,
       QUESTION_ID,
       expect.any(Date),
-      expect.any(Function)
+      expect.any(Function),
     );
 
     // Verify Socket broadcast
@@ -238,11 +271,88 @@ describe("Socket.IO host:launch_question Event Handler", () => {
         options: ["3", "4", "5"],
         startedAt: expect.any(Date),
         endsAt: expect.any(Date),
-      })
+      }),
     );
 
     // Check that correctAnswer is NOT sent in broadcast
     const broadcastPayload = emitSpy.mock.calls[0][1];
     expect(broadcastPayload.correctAnswer).toBeUndefined();
+  });
+
+  it("should finalize a question and broadcast all result events", async () => {
+    mockRuntime.currentQuestion = {
+      questionId: QUESTION_ID,
+      startedAt: new Date(),
+      endsAt: new Date(Date.now() + 1000),
+      correctAnswer: "4",
+    };
+    vi.mocked(gameRuntimeManager.get).mockReturnValue(mockRuntime);
+    vi.mocked(gameFlowService.endQuestion).mockResolvedValue({
+      finalized: true,
+      sessionId: SESSION_ID,
+      questionId: QUESTION_ID,
+      correctAnswer: "4",
+      endedAt: new Date(),
+      leaderboard: [{ participantId: "p-1", score: 10 }],
+      statistics: {
+        totalParticipants: 2,
+        answeredCount: 1,
+        correctCount: 1,
+        unansweredCount: 1,
+        averageResponseTimeMs: 500,
+      },
+      participantResults: [
+        {
+          participantId: "p-1",
+          socketId: "participant-socket",
+          isCorrect: true,
+          responseTimeMs: 500,
+          scoreAwarded: 10,
+        },
+      ],
+    } as any);
+
+    const emitSpy = vi.fn();
+    vi.mocked(mockIO.to).mockReturnValue({ emit: emitSpy } as any);
+
+    const result = await triggerEndQuestion({
+      sessionId: SESSION_ID,
+      questionId: QUESTION_ID,
+    });
+
+    expect(result).toEqual({
+      success: true,
+      finalized: true,
+      sessionId: SESSION_ID,
+      questionId: QUESTION_ID,
+    });
+    expect(gameFlowService.endQuestion).toHaveBeenCalledWith(
+      SESSION_ID,
+      QUESTION_ID,
+    );
+    expect(emitSpy).toHaveBeenCalledWith(
+      SERVER_EVENTS.QUESTION_ENDED,
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        questionId: QUESTION_ID,
+        correctAnswer: "4",
+      }),
+    );
+    expect(emitSpy).toHaveBeenCalledWith(
+      SERVER_EVENTS.LEADERBOARD_UPDATED,
+      expect.objectContaining({ sessionId: SESSION_ID }),
+    );
+    expect(emitSpy).toHaveBeenCalledWith(
+      SERVER_EVENTS.STATISTICS_UPDATED,
+      expect.objectContaining({ sessionId: SESSION_ID }),
+    );
+    expect(mockIO.to).toHaveBeenCalledWith("participant-socket");
+    expect(emitSpy).toHaveBeenCalledWith(SERVER_EVENTS.ANSWER_RESULT, {
+      questionId: QUESTION_ID,
+      accepted: true,
+      isCorrect: true,
+      responseTimeMs: 500,
+      scoreAwarded: 10,
+    });
   });
 });
