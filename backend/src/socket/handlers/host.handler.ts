@@ -8,6 +8,7 @@ import { gameFlowService } from "@/modules/game-flow/game-flow.service.js";
 import { gameRuntimeManager } from "@/realtime/game-runtime.manager.js";
 import { questionTimerManager } from "@/realtime/timer/question-timer.manager.js";
 import { objectIdRegex } from "@/utils/helpers.js";
+import type { QuestionFinalizationResult } from "@/modules/game-flow/game-flow.types.js";
 
 const joinSessionPayloadSchema = z.object({
   sessionId: z.string().regex(objectIdRegex, "Invalid session ID"),
@@ -130,10 +131,11 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
       try {
         /* Close the active question first so clients do not remain in a
         question state after the session has ended. */
-        await endQuestion(
-          sessionId,
-          gameRuntimeManager.get(sessionId)?.currentQuestion?.questionId,
-        );
+        const activeQuestionId =
+          gameRuntimeManager.get(sessionId)?.currentQuestion?.questionId;
+        if (activeQuestionId) {
+          await finalizeQuestion(sessionId, activeQuestionId);
+        }
 
         const endedSession = await gameFlowService.endSession(sessionId);
 
@@ -225,7 +227,7 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
           endsAt,
           async (sId, qId) => {
             try {
-              await endQuestion(sId, qId);
+              await finalizeQuestion(sId, qId);
             } catch (err) {
               console.error("[timer] Error in endQuestion callback:", err);
             }
@@ -276,9 +278,14 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
         `[socket] Host ${socket.id} ending question ${questionId} in session ${sessionId}`,
       );
 
-      void endQuestion(sessionId, questionId)
-        .then(() => {
-          callback?.({ success: true, sessionId, questionId });
+      void finalizeQuestion(sessionId, questionId)
+        .then((result) => {
+          callback?.({
+            success: true,
+            finalized: result.finalized,
+            sessionId,
+            questionId,
+          });
         })
         .catch((error) => {
           console.error("[socket] Error ending question:", error);
@@ -287,23 +294,53 @@ export const registerHostHandlers = (socket: Socket, io: Server): void => {
     },
   );
 
-  async function endQuestion(
+  /**
+   * Finalizes an active question by persisting scores/submissions and broadcasting final results,
+   * updated leaderboards, and answer evaluations to connected clients.
+   *
+   * @param sessionId - The ID of the current game session.
+   * @param questionId - The ID of the question being finalized.
+   * @returns The question finalization result containing statistics, leaderboards, and participant results.
+   */
+  /** Finalizes a question and broadcasts its results to the session. */
+  async function finalizeQuestion(
     sessionId: string,
-    questionId?: string,
-  ): Promise<void> {
-    const runtime = gameRuntimeManager.get(sessionId);
-    const activeQuestion = runtime?.currentQuestion;
-    if (!runtime || !activeQuestion) return;
-    if (questionId && activeQuestion.questionId !== questionId) return;
+    questionId: string,
+  ): Promise<QuestionFinalizationResult> {
+    const result = await gameFlowService.endQuestion(sessionId, questionId);
+    if (!result.finalized) return result;
 
-    questionTimerManager.cancelQuestionTimer(sessionId);
-    runtime.currentQuestion = null;
-
-    // The answer is deliberately sent only now, after submissions are closed.
     io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.QUESTION_ENDED, {
       sessionId,
-      questionId,
-      correctAnswer: activeQuestion.correctAnswer,
+      questionId: result.questionId,
+      endedAt: result.endedAt,
+      correctAnswer: result.correctAnswer,
     });
+
+    io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.LEADERBOARD_UPDATED, {
+      sessionId,
+      questionId: result.questionId,
+      leaderboard: result.leaderboard,
+    });
+
+    io.to(getSessionRoom(sessionId)).emit(SERVER_EVENTS.STATISTICS_UPDATED, {
+      sessionId,
+      questionId: result.questionId,
+      statistics: result.statistics,
+    });
+
+    for (const participantResult of result.participantResults) {
+      if (!participantResult.socketId) continue;
+
+      io.to(participantResult.socketId).emit(SERVER_EVENTS.ANSWER_RESULT, {
+        questionId: result.questionId,
+        accepted: true,
+        isCorrect: participantResult.isCorrect,
+        responseTimeMs: participantResult.responseTimeMs,
+        scoreAwarded: participantResult.scoreAwarded,
+      });
+    }
+
+    return result;
   }
 };
