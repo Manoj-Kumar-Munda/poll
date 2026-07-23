@@ -26,10 +26,13 @@ export interface RuntimeQuestion {
 }
 
 export interface RuntimeSubmission {
+  questionId: string;
   participantId: string;
   answer: unknown;
   isCorrect: boolean;
   submittedAt: Date;
+  responseTimeMs: number;
+  scoreAwarded: number;
 }
 
 /** Runtime leaderboard data, to be defined by scoring. */
@@ -40,5 +43,7 @@ export interface GameRuntime {
   sessionId: string;
   participants: Map<string, RuntimeParticipant>;
   currentQuestion: RuntimeQuestion | null;
+  /** Set while the active question is being finalized and persisted. */
+  finalizingQuestionId?: string;
   submissions: Map<string, RuntimeSubmission>;
 }
