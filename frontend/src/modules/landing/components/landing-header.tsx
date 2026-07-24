@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, Menu, X } from 'lucide-react'
-import { Brand } from '@/components'
+import { Brand } from '@/components/brand'
 
 const navItems = ['Features', 'How it works', 'Pricing', 'Resources']
 
