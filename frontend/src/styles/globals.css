@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Krub:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-heading: "Inter", sans-serif;
+  --font-body: "Krub", sans-serif;
+  --font-sans: "Krub", sans-serif;
+
+  /* Quizzy palette: warm paper, ink, forest, sage, and quiet utility colors. */
+  --color-canvas: #fcfcfa;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f7f6f1;
+  --color-surface-muted: #f0efe9;
+  --color-ink: #101412;
+  --color-ink-muted: #68706b;
+  --color-ink-subtle: #949b96;
+  --color-brand-forest: #0d4a39;
+  --color-brand-forest-hover: #0a3d30;
+  --color-brand-sage: #5f776c;
+  --color-brand-sage-soft: #e8eee9;
+  --color-border: #e8e9e4;
+  --color-border-strong: #c9cec9;
+  --color-accent-wheat: #d9d2b3;
+  --color-accent-wheat-soft: #f4f1e7;
+  --color-status-live: #4b9b69;
+  --color-status-blue: #4b91d1;
+  --color-status-violet: #8b68c7;
+  --color-status-amber: #d9a52f;
+
+  /* Intentional spacing rhythm: 4px base, 8px working unit. */
+  --spacing-page: 60px;
+  --spacing-page-mobile: 20px;
+  --spacing-section: 96px;
+  --spacing-section-compact: 64px;
+  --spacing-gutter: 32px;
+  --spacing-card: 24px;
+  --spacing-card-compact: 16px;
+  --spacing-control-x: 16px;
+  --spacing-control-y: 12px;
+  --spacing-inline: 8px;
+
+  --radius-panel: 16px;
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
+
+  --shadow-panel: 0 8px 28px rgb(16 20 18 / 0.06);
+  --shadow-float: 0 16px 40px rgb(16 20 18 / 0.1);
+}
+
+@layer base {
+  html {
+    background: var(--color-ink);
+  }
+
+  body {
+    @apply font-body;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    margin: 0;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+}
